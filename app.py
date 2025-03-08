@@ -208,7 +208,22 @@ results_container = st.container()
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 # Load the data from Google Sheets
-df = conn.read(spreadsheet=st.secrets["spreadsheet"])
+try:
+    # First try to access directly from the secrets structure used in Streamlit Cloud
+    if "connections" in st.secrets and "gsheets" in st.secrets["connections"] and "spreadsheet" in st.secrets["connections"]["gsheets"]:
+        spreadsheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
+        df = conn.read(spreadsheet=spreadsheet_url)
+    # Then try the flatter structure often used locally
+    elif "spreadsheet" in st.secrets:
+        df = conn.read(spreadsheet=st.secrets["spreadsheet"])
+    # If neither is found, show a helpful error
+    else:
+        st.error("Google Sheet URL not found in secrets. Please check your configuration.")
+        st.stop()
+except Exception as e:
+    st.error(f"Error connecting to Google Sheets: {e}")
+    st.stop()
+
 
 # Make sure rings column is numeric
 df["Rings"] = pd.to_numeric(df["Rings"])
